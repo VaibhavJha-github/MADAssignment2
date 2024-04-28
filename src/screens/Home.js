@@ -7,6 +7,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
+
 const Home = () => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -24,6 +25,7 @@ const Home = () => {
                 setLoading(false);
             });
     }, []);
+    
 
     const renderItem = ({ item }) => (
         <Pressable 
