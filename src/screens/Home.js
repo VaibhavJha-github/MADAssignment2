@@ -11,6 +11,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 const Home = () => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
+    
     const navigation = useNavigation();
 
     useEffect(() => {
@@ -111,5 +112,6 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
 });
+
 
 export default Home;

@@ -38,7 +38,7 @@ export default function App() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsAppFirstLaunched(false);
-    }, 3000); // Delay for the splash screen
+    }, 3000); // Splash screen delay
     return () => clearTimeout(timer);
   }, []);
 
@@ -50,11 +50,11 @@ export default function App() {
       ) : (
         <NavigationContainer>
           <Tab.Navigator
-            initialRouteName="Home"
+            initialRouteName="Products"
             screenOptions={({ route }) => ({
               tabBarIcon: ({ focused, color, size }) => {
                 let iconName;
-                if (route.name === 'Home') {
+                if (route.name === 'Products') {
                   iconName = focused ? 'home' : 'home-outline';
                 } else if (route.name === 'My Cart') {
                   iconName = focused ? 'cart' : 'cart-outline';
@@ -63,10 +63,10 @@ export default function App() {
               },
               tabBarActiveTintColor: '#3399ff',
               tabBarInactiveTintColor: 'gray',
-              headerShown: false // Ensure headers are not shown on any screen
+              headerShown: false 
             })}
           >
-            <Tab.Screen name="Home" component={HomeStackScreen} />
+            <Tab.Screen name="Products" component={HomeStackScreen} />
             <Tab.Screen name="My Cart" component={CartStackScreen} />
           </Tab.Navigator>
         </NavigationContainer>

@@ -3,13 +3,42 @@ import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity } from 'rea
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 const ProductDetails = () => {
     const navigation = useNavigation();
     const route = useRoute();
+
     const { productId } = route.params;
     const [product, setProduct] = useState(null);
+
     const [loading, setLoading] = useState(true);
 
+    const addToCart = async (product) => {
+        try {
+          const existingCart = await AsyncStorage.getItem('cart');
+          let newCart = JSON.parse(existingCart);
+          if (!newCart) {
+            newCart = {};
+          }
+      
+          if (newCart[product.id]) {
+            newCart[product.id].quantity += 1; // Increment quantity
+          } else {
+            newCart[product.id] = {
+              name: product.title,
+              price: product.price,
+              quantity: 1
+            };
+          }
+
+          await AsyncStorage.setItem('cart', JSON.stringify(newCart));
+          alert('Product added to cart!');
+        } catch (e) {
+          console.error('Failed to add item to cart:', e);
+        }
+      };
+      
     useEffect(() => {
         fetch(`https://fakestoreapi.com/products/${productId}`)
             .then(res => res.json())
@@ -41,12 +70,12 @@ const ProductDetails = () => {
                     <Text style={styles.boldText}>Price: </Text>${product.price.toFixed(2)}
                 </Text>
             </View>
-            <View style={styles.actionContainer}>
+            <View style={styles.actionContainer}>  
                 <TouchableOpacity style={styles.button} onPress={() => navigation.goBack()}>
                     <Ionicons name="backspace" size={20} color="#fff" />
                     <Text style={styles.buttonText}>Back</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.button} onPress={() => console.log('Add to Cart')}>
+                <TouchableOpacity style={styles.button} onPress={() => addToCart(product)}>
                     <Ionicons name="cart" size={20} color="#fff" />
                     <Text style={styles.buttonText}>Add to Cart</Text>
                 </TouchableOpacity>
@@ -57,6 +86,7 @@ const ProductDetails = () => {
             </View>
         </ScrollView>
     );
+
 };
 
 const styles = StyleSheet.create({

@@ -25,6 +25,7 @@ const CategoryScreen = () => {
             });
     }, [categoryName]);
 
+    
     const renderProduct = ({ item }) => (
         <TouchableOpacity 
           style={styles.productContainer}
