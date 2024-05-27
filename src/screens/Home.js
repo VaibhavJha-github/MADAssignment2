@@ -1,12 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, Text, View, Pressable, FlatList, SafeAreaView, ActivityIndicator, Button, TextInput, ScrollView, Modal} from 'react-native';
-import { Ionicons, AntDesign } from "@expo/vector-icons";
-import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native"; 
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import { StatusBar } from 'expo-status-bar';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
- 
+import { StyleSheet, Text, View, Pressable, FlatList, SafeAreaView, ActivityIndicator } from 'react-native';
+import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Home = () => {
     const [categories, setCategories] = useState([]);
@@ -14,16 +9,34 @@ const Home = () => {
     const navigation = useNavigation();
 
     useEffect(() => {
-        fetch('https://fakestoreapi.com/products/categories')
-            .then(res => res.json())
-            .then(data => {
-                setCategories(data.map((category, index) => ({ id: `${category}-${index}`, title: category }))); // Ensure unique keys
+        const fetchCategories = async () => {
+            try {
+                const cachedCategories = await AsyncStorage.getItem('categories');
+                if (cachedCategories) {
+                    setCategories(JSON.parse(cachedCategories).map((category, index) => ({ id: `${category}-${index}`, title: category })));
+                    setLoading(false);
+                } else {
+                    // Fetch from API if not cached
+                    fetch('https://fakestoreapi.com/products/categories')
+                        .then(res => res.json())
+                        .then(data => {
+                            setCategories(data.map((category, index) => ({ id: `${category}-${index}`, title: category }))); // Ensure unique keys
+                            setLoading(false);
+                            // Cache the data
+                            AsyncStorage.setItem('categories', JSON.stringify(data));
+                        })
+                        .catch(error => {
+                            console.error('Error fetching categories:', error);
+                            setLoading(false);
+                        });
+                }
+            } catch (error) {
+                console.error('Error loading categories:', error);
                 setLoading(false);
-            })
-            .catch(error => {
-                console.error('Error fetching categories:', error);
-                setLoading(false);
-            });
+            }
+        };
+
+        fetchCategories();
     }, []);
     
     const renderItem = ({ item }) => (
@@ -35,17 +48,23 @@ const Home = () => {
         </Pressable>
     );
 
+    const renderDeveloperName = () => (
+        <View style={styles.developerNameContainer}>
+            <Text style={styles.developerNameText}>Developed by: Vaibhav Jha</Text>
+        </View>
+    );
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Categories</Text>
+                <Text style={styles.title}>Product Categories</Text>
             </View>
             {loading ? (
                 <ActivityIndicator size="large" color="#0000ff" />
             ) : (
                 <FlatList
-                    data={categories}
-                    renderItem={renderItem}
+                    data={[...categories, { id: 'developer', title: 'Developed by: Vaibhav Jha' }]}
+                    renderItem={({ item }) => item.id === 'developer' ? renderDeveloperName() : renderItem({ item })}
                     keyExtractor={item => item.id}
                     contentContainerStyle={styles.listContainer}
                 />
@@ -105,6 +124,22 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     buttonText: {
+        fontSize: 18,
+        color: '#3399ff',
+        fontWeight: 'bold',
+    },
+    developerNameContainer: {
+        alignItems: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderWidth: 2,
+        borderColor: 'black',
+        borderRadius: 10,
+        marginVertical: 10,
+        width: '100%',
+        backgroundColor: '#C0C0C0',
+    },
+    developerNameText: {
         fontSize: 18,
         color: '#3399ff',
         fontWeight: 'bold',
