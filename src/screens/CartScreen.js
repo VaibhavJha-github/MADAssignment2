@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
+import { useSelector, useDispatch } from 'react-redux';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const CartScreen = () => {
-  const [cartItems, setCartItems] = useState([]);
+  const dispatch = useDispatch();
+  const cartItems = useSelector((state) => state.cartItems);
   const isFocused = useIsFocused();
 
   const fetchProductDetails = async (productId) => {
@@ -26,7 +28,7 @@ const CartScreen = () => {
         };
       })
     );
-    setCartItems(products);
+    dispatch({ type: 'SET_CART_ITEMS', payload: products }); // Use a new action to set cart items
   };
 
   useEffect(() => {
@@ -50,23 +52,21 @@ const CartScreen = () => {
     let newCart = currentCart ? JSON.parse(currentCart) : {};
     newCart[id].quantity += 1;
     await AsyncStorage.setItem('cart', JSON.stringify(newCart));
-    fetchCart();  // Refresh cart items
+    dispatch({ type: 'UPDATE_ITEM_QUANTITY', payload: { id, quantity: newCart[id].quantity } });
   };
 
   const handleDecrease = async (id) => {
     const currentCart = await AsyncStorage.getItem('cart');
     let newCart = currentCart ? JSON.parse(currentCart) : {};
-  
-    if (newCart[id] && newCart[id].quantity > 0) {
+
+    if (newCart[id] && newCart[id].quantity > 1) {
       newCart[id].quantity -= 1;
-  
-      if (newCart[id].quantity === 0) {
-        delete newCart[id];
-      }
-  
-      await AsyncStorage.setItem('cart', JSON.stringify(newCart));
-      fetchCart();  // Refresh cart items
+    } else {
+      delete newCart[id];
     }
+
+    await AsyncStorage.setItem('cart', JSON.stringify(newCart));
+    dispatch({ type: 'UPDATE_ITEM_QUANTITY', payload: { id, quantity: newCart[id] ? newCart[id].quantity : 0 } });
   };
 
   const { totalItems, totalCost } = getTotalItemsAndCost();

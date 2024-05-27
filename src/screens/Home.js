@@ -6,19 +6,18 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-
+ 
 
 const Home = () => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
-    
     const navigation = useNavigation();
 
     useEffect(() => {
         fetch('https://fakestoreapi.com/products/categories')
             .then(res => res.json())
             .then(data => {
-                setCategories(data.map((category, index) => ({ id: index.toString(), title: category })));
+                setCategories(data.map((category, index) => ({ id: `${category}-${index}`, title: category }))); // Ensure unique keys
                 setLoading(false);
             })
             .catch(error => {
@@ -27,7 +26,6 @@ const Home = () => {
             });
     }, []);
     
-
     const renderItem = ({ item }) => (
         <Pressable 
           style={styles.button}
@@ -112,6 +110,5 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
 });
-
 
 export default Home;
