@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
@@ -28,7 +28,7 @@ const CartScreen = () => {
         };
       })
     );
-    dispatch({ type: 'SET_CART_ITEMS', payload: products }); // Use a new action to set cart items
+    dispatch({ type: 'SET_CART_ITEMS', payload: products });
   };
 
   useEffect(() => {
@@ -67,6 +67,16 @@ const CartScreen = () => {
 
     await AsyncStorage.setItem('cart', JSON.stringify(newCart));
     dispatch({ type: 'UPDATE_ITEM_QUANTITY', payload: { id, quantity: newCart[id] ? newCart[id].quantity : 0 } });
+  };
+
+  const handleCheckout = async () => {
+    try {
+      await AsyncStorage.removeItem('cart');
+      dispatch({ type: 'SET_CART_ITEMS', payload: [] });
+      Alert.alert('Order Created', 'Your order has been successfully created.');
+    } catch (e) {
+      console.error('Failed to clear cart:', e);
+    }
   };
 
   const { totalItems, totalCost } = getTotalItemsAndCost();
@@ -112,6 +122,16 @@ const CartScreen = () => {
       ) : (
         <View style={styles.content}>
           <Text style={styles.emptyCartText}>Your cart is empty!</Text>
+        </View>
+      )}
+      {cartItems.length > 0 && (
+        <View style={styles.checkoutButtonContainer}>
+          <TouchableOpacity 
+            style={styles.checkoutButton}
+            onPress={handleCheckout}
+          >
+            <Text style={styles.checkoutButtonText}>Check Out</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -216,6 +236,25 @@ const styles = StyleSheet.create({
   itemQuantity: {
     fontSize: 16,
     color: '#666',
+  },
+  checkoutButtonContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  checkoutButton: {
+    backgroundColor: '#3399ff',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderWidth: 2,
+    borderColor: 'black',
+    borderRadius: 10,
+    width: '95%',
+    alignItems: 'center',
+  },
+  checkoutButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   }
 });
 

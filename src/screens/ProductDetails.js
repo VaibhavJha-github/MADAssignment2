@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { useDispatch, useSelector } from 'react-redux'; // Added useSelector
+import { useDispatch, useSelector } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ProductDetails = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const dispatch = useDispatch();
-  const cartItems = useSelector((state) => state.cartItems); // Added cartItems selector
+  const cartItems = useSelector((state) => state.cartItems);
 
   const { productId } = route.params;
   const [product, setProduct] = useState(null);
@@ -46,20 +46,31 @@ const ProductDetails = () => {
   };
 
   useEffect(() => {
-    fetch(`https://fakestoreapi.com/products/${productId}`)
-      .then(res => res.json())
-      .then(data => {
-        setProduct(data);
+    const fetchProduct = async () => {
+      const cachedProduct = await AsyncStorage.getItem(`product-${productId}`);
+      if (cachedProduct) {
+        setProduct(JSON.parse(cachedProduct));
         setLoading(false);
-      })
-      .catch(error => {
-        console.error('Error fetching product details:', error);
-        setLoading(false);
-      });
+      } else {
+        fetch(`https://fakestoreapi.com/products/${productId}`)
+          .then(res => res.json())
+          .then(data => {
+            setProduct(data);
+            setLoading(false);
+            AsyncStorage.setItem(`product-${productId}`, JSON.stringify(data));
+          })
+          .catch(error => {
+            console.error('Error fetching product details:', error);
+            setLoading(false);
+          });
+      }
+    };
+
+    fetchProduct();
   }, [productId]);
 
   if (loading) {
-    return <Text>Loading...</Text>;
+    return <ActivityIndicator size="large" color="#0000ff" />;
   }
 
   return (
@@ -142,7 +153,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 18,
-    color: '#000',  
+    color: '#000',
   },
   boldText: {
     fontWeight: 'bold',

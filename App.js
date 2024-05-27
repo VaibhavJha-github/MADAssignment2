@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, StatusBar, Text } from 'react-native'; // Ensure Text is imported here
+import { StyleSheet, View, StatusBar, Text, Alert, TouchableOpacity } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -66,6 +66,22 @@ function CartIconWithBadge() {
   );
 }
 
+function OrdersIconWithBadge() {
+  const orders = useSelector((state) => state.orders || []);
+  const newOrdersCount = orders.filter(order => order.status === 'new').length;
+
+  return (
+    <View>
+      <Ionicons name="gift" size={25} color="gray" />
+      {newOrdersCount > 0 && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{newOrdersCount}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 function App() {
   const [isAppFirstLaunched, setIsAppFirstLaunched] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -85,6 +101,19 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  const handleTabPress = (route, navigation) => {
+    if (!isLoggedIn) {
+      Alert.alert(
+        'Not Logged In',
+        'You must log in to view this tab',
+        [{ text: 'OK' }],
+        { cancelable: false }
+      );
+    } else {
+      navigation.navigate(route.name);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
@@ -93,8 +122,8 @@ function App() {
       ) : (
         <NavigationContainer>
           <Tab.Navigator
-            initialRouteName="Products"
-            screenOptions={({ route }) => ({
+            initialRouteName={isLoggedIn ? 'Products' : 'User Profile'}
+            screenOptions={({ route, navigation }) => ({
               tabBarIcon: ({ focused, color, size }) => {
                 let iconName;
                 if (route.name === 'Products') {
@@ -108,13 +137,21 @@ function App() {
                 }
                 return route.name === 'My Cart' ? (
                   <CartIconWithBadge />
+                ) : route.name === 'My Orders' ? (
+                  <OrdersIconWithBadge />
                 ) : (
                   <Ionicons name={iconName} size={size} color={color} />
                 );
               },
               tabBarActiveTintColor: '#3399ff',
               tabBarInactiveTintColor: 'gray',
-              headerShown: false 
+              headerShown: false,
+              tabBarButton: (props) => (
+                <TouchableOpacity
+                  {...props}
+                  onPress={() => handleTabPress(route, props.navigation)}
+                />
+              ),
             })}
           >
             <Tab.Screen name="Products" component={HomeStackScreen} />
