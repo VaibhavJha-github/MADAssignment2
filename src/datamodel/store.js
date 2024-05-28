@@ -2,7 +2,8 @@ import { createStore } from 'redux';
 
 const initialState = {
   cartItems: [],
-  orders: [], // Initialize orders state
+  orders: [],
+  user: null,
 };
 
 function cartReducer(state = initialState, action) {
@@ -39,7 +40,9 @@ function cartReducer(state = initialState, action) {
     case 'SET_CART_ITEMS':
       return { ...state, cartItems: action.payload };
     case 'SET_ORDERS':
-      return { ...state, orders: action.payload }; // Add case to set orders
+      return { ...state, orders: action.payload };
+    case 'SET_USER':
+      return { ...state, user: action.payload };
     default:
       return state;
   }

@@ -18,39 +18,52 @@ const UserProfile = ({ navigation }) => {
     fetchUser();
   }, []);
 
-  const handleUpdate = () => {
-    fetch('http://localhost:3000/update', {
-      method: 'PUT',
+  const handleUpdate = async () => {
+    const token = await AsyncStorage.getItem('token');
+    fetch('http://localhost:3000/users/update', {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ name: newName, password: newPassword }),
     })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
+      .then(response => response.text())  // Change to text
+      .then(text => {
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (error) {
+          throw new Error(`Unexpected response: ${text}`);
+        }
+
+        if (data.status === 'OK') {
           Alert.alert('Update Successful', 'Your profile has been updated.');
           setUser({ ...user, name: newName });
           setModalVisible(false);
         } else {
-          Alert.alert('Update Failed', 'An error occurred');
+          Alert.alert('Update Failed', data.message);
         }
       })
       .catch(error => {
-        Alert.alert('Update Failed', 'An error occurred');
+        console.error(error); // Log the error for debugging
+        Alert.alert('Update Failed', error.message);
       });
   };
 
   const handleSignOut = async () => {
     await AsyncStorage.removeItem('token');
+    await AsyncStorage.removeItem('user');
     navigation.navigate('SignIn');
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>User Profile</Text>
-      <Text>Name: {user.name}</Text>
-      <Text>Email: {user.email}</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>User Profile</Text>
+      </View>
+      <Text style={styles.label}>Name: <Text style={styles.info}>{user.name}</Text></Text>
+      <Text style={styles.label}>Email: <Text style={styles.info}>{user.email}</Text></Text>
       <Button title="Update" onPress={() => setModalVisible(true)} />
       <Button title="Sign Out" onPress={handleSignOut} />
 
@@ -94,10 +107,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
   },
+  header: {
+    backgroundColor: '#3399ff',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderWidth: 2,
+    borderColor: 'black',
+    borderRadius: 10,
+    width: '95%',
+    alignItems: 'center',
+    marginVertical: 10,
+  },
   title: {
     fontSize: 24,
-    marginBottom: 16,
     fontWeight: 'bold',
+    color: '#fff',
+  },
+  label: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginVertical: 5,
+  },
+  info: {
+    fontWeight: 'normal',
   },
   modalView: {
     margin: 20,

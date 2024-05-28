@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, Image } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,14 +11,16 @@ const MyOrders = () => {
   const user = useSelector((state) => state.user); // Assuming user state is managed by Redux
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      const response = await fetch(`https://fakestoreapi.com/orders/user/${user.id}`);
-      const data = await response.json();
-      setOrders(data);
-    };
+    if (user && user.id) {
+      const fetchOrders = async () => {
+        const response = await fetch(`https://fakestoreapi.com/orders/user/${user.id}`);
+        const data = await response.json();
+        setOrders(data);
+      };
 
-    fetchOrders();
-  }, []);
+      fetchOrders();
+    }
+  }, [user]);
 
   const toggleExpand = (status) => {
     setExpanded((prev) => ({ ...prev, [status]: !prev[status] }));
@@ -87,6 +89,15 @@ const MyOrders = () => {
   );
 
   const getStatusCount = (status) => orders.filter((order) => order.status === status).length;
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>My Orders</Text>
+        <Text style={styles.errorText}>You must be logged in to view your orders.</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -222,6 +233,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  errorText: {
+    fontSize: 18,
+    color: 'red',
+    textAlign: 'center',
+    marginVertical: 20,
   },
 });
 

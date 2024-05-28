@@ -30,23 +30,32 @@ const SignUp = ({ navigation }) => {
       return;
     }
 
-    fetch('http://localhost:3000/register', {
+    fetch('http://localhost:3000/users/signup', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ name, email, password }),
     })
-      .then(response => response.json())
-      .then(data => {
+      .then(response => response.text())  // Change to text
+      .then(text => {
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (error) {
+          throw new Error(`Unexpected response: ${text}`);
+        }
+
         if (data.id) {
+          Alert.alert('Sign Up Successful', 'You can now log in.');
           navigation.navigate('SignIn');
         } else {
           Alert.alert('Sign Up Failed', 'An error occurred');
         }
       })
       .catch(error => {
-        Alert.alert('Sign Up Failed', 'An error occurred');
+        console.error(error); // Log the error for debugging
+        Alert.alert('Sign Up Failed', error.message);
       });
   };
 

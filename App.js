@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, StatusBar, Text, Alert, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, StatusBar, Alert, Text } from 'react-native'; // Added Text import
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -52,7 +52,7 @@ function UserProfileStackScreen() {
 
 function CartIconWithBadge() {
   const cartItems = useSelector((state) => state.cartItems);
-  const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalQuantity = cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
 
   return (
     <View>
@@ -85,11 +85,16 @@ function OrdersIconWithBadge() {
 function App() {
   const [isAppFirstLaunched, setIsAppFirstLaunched] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const checkLoginStatus = async () => {
       const token = await AsyncStorage.getItem('token');
-      setIsLoggedIn(!!token);
+      const user = await AsyncStorage.getItem('user');
+      if (token && user) {
+        setIsLoggedIn(true);
+        dispatch({ type: 'SET_USER', payload: JSON.parse(user) });
+      }
     };
 
     const timer = setTimeout(() => {
@@ -101,19 +106,6 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleTabPress = (route, navigation) => {
-    if (!isLoggedIn) {
-      Alert.alert(
-        'Not Logged In',
-        'You must log in to view this tab',
-        [{ text: 'OK' }],
-        { cancelable: false }
-      );
-    } else {
-      navigation.navigate(route.name);
-    }
-  };
-
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
@@ -122,7 +114,7 @@ function App() {
       ) : (
         <NavigationContainer>
           <Tab.Navigator
-            initialRouteName={isLoggedIn ? 'Products' : 'User Profile'}
+            initialRouteName="UserProfile"
             screenOptions={({ route, navigation }) => ({
               tabBarIcon: ({ focused, color, size }) => {
                 let iconName;
@@ -146,12 +138,19 @@ function App() {
               tabBarActiveTintColor: '#3399ff',
               tabBarInactiveTintColor: 'gray',
               headerShown: false,
-              tabBarButton: (props) => (
-                <TouchableOpacity
-                  {...props}
-                  onPress={() => handleTabPress(route, props.navigation)}
-                />
-              ),
+              tabBarOnPress: ({ navigation, defaultHandler }) => {
+                if (!isLoggedIn && (route.name === 'User Profile' || route.name === 'My Orders')) {
+                  navigation.navigate('SignIn');
+                  Alert.alert(
+                    'Not Logged In',
+                    'You must log in to view this tab',
+                    [{ text: 'OK' }],
+                    { cancelable: false }
+                  );
+                } else {
+                  defaultHandler();
+                }
+              },
             })}
           >
             <Tab.Screen name="Products" component={HomeStackScreen} />

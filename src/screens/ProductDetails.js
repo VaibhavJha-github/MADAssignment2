@@ -25,11 +25,11 @@ const ProductDetails = () => {
         quantity
       };
 
-      const existingCart = await AsyncStorage.getItem('cart');
-      let newCart = JSON.parse(existingCart);
-      if (!newCart) {
-        newCart = {};
-      }
+      const user = await AsyncStorage.getItem('user');
+      const userId = user ? JSON.parse(user).id : null;
+
+      const existingCart = await AsyncStorage.getItem(`cart-${userId}`);
+      let newCart = existingCart ? JSON.parse(existingCart) : {};
 
       newCart[product.id] = {
         name: product.title,
@@ -37,8 +37,19 @@ const ProductDetails = () => {
         quantity
       };
 
-      await AsyncStorage.setItem('cart', JSON.stringify(newCart));
+      await AsyncStorage.setItem(`cart-${userId}`, JSON.stringify(newCart));
       dispatch({ type: 'ADD_ITEM', payload: newCartItem });
+
+      // Update server with the new cart
+      await fetch('http://localhost:3000/cart', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ items: Object.values(newCart) }),
+      });
+
       alert('Product added to cart!');
     } catch (e) {
       console.error('Failed to add item to cart:', e);

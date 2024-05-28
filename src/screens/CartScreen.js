@@ -7,7 +7,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const CartScreen = () => {
   const dispatch = useDispatch();
-  const cartItems = useSelector((state) => state.cartItems);
+  const cartItems = useSelector((state) => state.cartItems || []);
   const isFocused = useIsFocused();
 
   const fetchProductDetails = async (productId) => {
@@ -16,7 +16,9 @@ const CartScreen = () => {
   };
 
   const fetchCart = async () => {
-    const cartData = await AsyncStorage.getItem('cart');
+    const user = await AsyncStorage.getItem('user');
+    const userId = user ? JSON.parse(user).id : null;
+    const cartData = await AsyncStorage.getItem(`cart-${userId}`);
     const cart = cartData ? JSON.parse(cartData) : {};
     const products = await Promise.all(
       Object.keys(cart).map(async (id) => {
@@ -41,22 +43,36 @@ const CartScreen = () => {
     let totalItems = 0;
     let totalCost = 0;
     cartItems.forEach(item => {
-      totalItems += item.quantity;
-      totalCost += item.price * item.quantity;
+      totalItems += item.quantity || 0;
+      totalCost += item.price * (item.quantity || 0);
     });
     return { totalItems, totalCost };
   };
 
   const handleIncrease = async (id) => {
-    const currentCart = await AsyncStorage.getItem('cart');
+    const user = await AsyncStorage.getItem('user');
+    const userId = user ? JSON.parse(user).id : null;
+    const currentCart = await AsyncStorage.getItem(`cart-${userId}`);
     let newCart = currentCart ? JSON.parse(currentCart) : {};
     newCart[id].quantity += 1;
-    await AsyncStorage.setItem('cart', JSON.stringify(newCart));
+    await AsyncStorage.setItem(`cart-${userId}`, JSON.stringify(newCart));
     dispatch({ type: 'UPDATE_ITEM_QUANTITY', payload: { id, quantity: newCart[id].quantity } });
+
+    // Update server with the new cart
+    await fetch('http://localhost:3000/cart', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`,
+      },
+      body: JSON.stringify({ items: Object.values(newCart) }),
+    });
   };
 
   const handleDecrease = async (id) => {
-    const currentCart = await AsyncStorage.getItem('cart');
+    const user = await AsyncStorage.getItem('user');
+    const userId = user ? JSON.parse(user).id : null;
+    const currentCart = await AsyncStorage.getItem(`cart-${userId}`);
     let newCart = currentCart ? JSON.parse(currentCart) : {};
 
     if (newCart[id] && newCart[id].quantity > 1) {
@@ -65,13 +81,25 @@ const CartScreen = () => {
       delete newCart[id];
     }
 
-    await AsyncStorage.setItem('cart', JSON.stringify(newCart));
+    await AsyncStorage.setItem(`cart-${userId}`, JSON.stringify(newCart));
     dispatch({ type: 'UPDATE_ITEM_QUANTITY', payload: { id, quantity: newCart[id] ? newCart[id].quantity : 0 } });
+
+    // Update server with the new cart
+    await fetch('http://localhost:3000/cart', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`,
+      },
+      body: JSON.stringify({ items: Object.values(newCart) }),
+    });
   };
 
   const handleCheckout = async () => {
     try {
-      await AsyncStorage.removeItem('cart');
+      const user = await AsyncStorage.getItem('user');
+      const userId = user ? JSON.parse(user).id : null;
+      await AsyncStorage.removeItem(`cart-${userId}`);
       dispatch({ type: 'SET_CART_ITEMS', payload: [] });
       Alert.alert('Order Created', 'Your order has been successfully created.');
     } catch (e) {
@@ -97,7 +125,7 @@ const CartScreen = () => {
       {cartItems.length > 0 ? (
         <FlatList
           data={cartItems}
-          keyExtractor={item => item.id.toString()}
+          keyExtractor={item => item.id ? item.id.toString() : Math.random().toString()}
           renderItem={({ item }) => (
             <View style={styles.listItem}>
               <Image source={{ uri: item.image }} style={styles.productImage} />
