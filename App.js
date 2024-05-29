@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, StatusBar, Alert, Text } from 'react-native'; // Added Text import
+import { StyleSheet, View, StatusBar, Alert, TouchableOpacity, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -68,7 +68,7 @@ function CartIconWithBadge() {
 
 function OrdersIconWithBadge() {
   const orders = useSelector((state) => state.orders || []);
-  const newOrdersCount = orders.filter(order => order.status === 'new').length;
+  const newOrdersCount = orders.filter(order => order.is_paid === 0 && order.is_delivered === 0).length;
 
   return (
     <View>
@@ -84,7 +84,7 @@ function OrdersIconWithBadge() {
 
 function App() {
   const [isAppFirstLaunched, setIsAppFirstLaunched] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const isLoggedIn = useSelector((state) => state.isLoggedIn);
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -92,7 +92,6 @@ function App() {
       const token = await AsyncStorage.getItem('token');
       const user = await AsyncStorage.getItem('user');
       if (token && user) {
-        setIsLoggedIn(true);
         dispatch({ type: 'SET_USER', payload: JSON.parse(user) });
       }
     };
@@ -104,7 +103,7 @@ function App() {
     checkLoginStatus();
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [dispatch]);
 
   return (
     <View style={styles.container}>
@@ -114,8 +113,8 @@ function App() {
       ) : (
         <NavigationContainer>
           <Tab.Navigator
-            initialRouteName="UserProfile"
-            screenOptions={({ route, navigation }) => ({
+            initialRouteName="User Profile"
+            screenOptions={({ route }) => ({
               tabBarIcon: ({ focused, color, size }) => {
                 let iconName;
                 if (route.name === 'Products') {
@@ -138,20 +137,8 @@ function App() {
               tabBarActiveTintColor: '#3399ff',
               tabBarInactiveTintColor: 'gray',
               headerShown: false,
-              tabBarOnPress: ({ navigation, defaultHandler }) => {
-                if (!isLoggedIn && (route.name === 'User Profile' || route.name === 'My Orders')) {
-                  navigation.navigate('SignIn');
-                  Alert.alert(
-                    'Not Logged In',
-                    'You must log in to view this tab',
-                    [{ text: 'OK' }],
-                    { cancelable: false }
-                  );
-                } else {
-                  defaultHandler();
-                }
-              },
             })}
+            tabBar={(props) => <CustomTabBar {...props} isLoggedIn={isLoggedIn} />}
           >
             <Tab.Screen name="Products" component={HomeStackScreen} />
             <Tab.Screen name="My Cart" component={CartStackScreen} />
@@ -163,6 +150,65 @@ function App() {
     </View>
   );
 }
+
+const CustomTabBar = ({ state, descriptors, navigation, isLoggedIn }) => {
+  return (
+    <View style={styles.tabBar}>
+      {state.routes.map((route, index) => {
+        const { options } = descriptors[route.key];
+        const label =
+          options.tabBarLabel !== undefined
+            ? options.tabBarLabel
+            : options.title !== undefined
+            ? options.title
+            : route.name;
+
+        const iconName = (() => {
+          if (route.name === 'Products') {
+            return 'home';
+          } else if (route.name === 'My Cart') {
+            return 'cart';
+          } else if (route.name === 'My Orders') {
+            return 'gift';
+          } else if (route.name === 'User Profile') {
+            return 'person';
+          }
+          return null;
+        })();
+
+        const isFocused = state.index === index;
+
+        const onPress = () => {
+          if (!isLoggedIn && route.name !== 'User Profile') {
+            Alert.alert('Not Logged In', 'You must log in to view this tab', [{ text: 'OK' }], { cancelable: false });
+            return;
+          }
+
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+
+          if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate(route.name);
+          }
+        };
+
+        return (
+          <TouchableOpacity
+            key={index}
+            onPress={onPress}
+            style={styles.tabButton}
+          >
+            <Ionicons name={iconName} size={25} color={isFocused ? '#3399ff' : 'gray'} />
+            <Text style={{ color: isFocused ? '#3399ff' : 'gray', fontSize: 12 }}>{label}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+};
 
 export default function MainApp() {
   return (
@@ -190,5 +236,19 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  tabBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    height: 60,
+    paddingBottom: 10, 
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
+  },
+  tabButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
   },
 });

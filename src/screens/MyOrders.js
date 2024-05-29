@@ -6,21 +6,31 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const MyOrders = () => {
   const dispatch = useDispatch();
-  const [orders, setOrders] = useState([]);
   const [expanded, setExpanded] = useState({});
-  const user = useSelector((state) => state.user); // Assuming user state is managed by Redux
+  const user = useSelector((state) => state.user);
+  const orders = useSelector((state) => state.orders);
 
   useEffect(() => {
     if (user && user.id) {
-      const fetchOrders = async () => {
-        const response = await fetch(`https://fakestoreapi.com/orders/user/${user.id}`);
-        const data = await response.json();
-        setOrders(data);
-      };
-
       fetchOrders();
     }
   }, [user]);
+
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/orders/all', {
+        headers: {
+          'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`,
+        },
+      });
+      const data = await response.json();
+      if (data.status === 'OK') {
+        dispatch({ type: 'SET_ORDERS', payload: data.orders });
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    }
+  };
 
   const toggleExpand = (status) => {
     setExpanded((prev) => ({ ...prev, [status]: !prev[status] }));
@@ -28,21 +38,19 @@ const MyOrders = () => {
 
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
-      const response = await fetch(`https://fakestoreapi.com/orders/${orderId}`, {
-        method: 'PATCH',
+      const response = await fetch('http://localhost:3000/orders/updateorder', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`,
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ orderID: orderId, isPaid: newStatus === 'paid', isDelivered: newStatus === 'delivered' }),
       });
       const data = await response.json();
 
-      if (data) {
+      if (data.status === 'OK') {
         Alert.alert('Status Updated', `Your order is ${newStatus}`);
-        // Refresh orders
-        const response = await fetch(`https://fakestoreapi.com/orders/user/${user.id}`);
-        const updatedOrders = await response.json();
-        setOrders(updatedOrders);
+        fetchOrders(); // Fetch updated orders after status change
       }
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -54,33 +62,38 @@ const MyOrders = () => {
       <TouchableOpacity onPress={() => setExpanded((prev) => ({ ...prev, [item.id]: !prev[item.id] }))}>
         <View style={styles.orderSummary}>
           <Text style={styles.orderId}>Order ID: {item.id}</Text>
-          <Text style={styles.orderDetails}>Items: {item.items.length} | Total: ${item.total.toFixed(2)}</Text>
+          <Text style={styles.orderDetails}>Items: {item.item_numbers} | Total: ${(item.total_price / 100).toFixed(2)}</Text>
           <Ionicons name={expanded[item.id] ? "caret-up" : "caret-down"} size={24} color="black" />
         </View>
       </TouchableOpacity>
       {expanded[item.id] && (
         <View style={styles.orderDetailsContainer}>
-          {item.items.map((product) => (
-            <View key={product.id} style={styles.productDetails}>
+          {JSON.parse(item.order_items).map((product) => (
+            <View key={product.prodID} style={styles.productDetails}>
               <Image source={{ uri: product.image }} style={styles.productImage} />
-              <Text style={styles.productTitle}>{product.title}</Text>
-              <Text style={styles.productQuantity}>Quantity: {product.quantity}</Text>
+              <View style={styles.productInfo}>
+                <Text style={styles.productTitle}>{product.title}</Text>
+                <Text style={styles.productPrice}>Price: ${(product.price * product.quantity).toFixed(2)}</Text>
+                <Text style={styles.productQuantity}>Quantity: {product.quantity}</Text>
+              </View>
             </View>
           ))}
-          {item.status === 'new' && (
+          {item.is_paid === 0 && (
             <TouchableOpacity
               style={styles.statusButton}
               onPress={() => handleStatusUpdate(item.id, 'paid')}
             >
               <Text style={styles.buttonText}>Pay</Text>
+              <Ionicons name="wallet" size={20} color="#fff" />
             </TouchableOpacity>
           )}
-          {item.status === 'paid' && (
+          {item.is_paid === 1 && item.is_delivered === 0 && (
             <TouchableOpacity
               style={styles.statusButton}
               onPress={() => handleStatusUpdate(item.id, 'delivered')}
             >
               <Text style={styles.buttonText}>Receive</Text>
+              <Ionicons name="car" size={20} color="#fff" />
             </TouchableOpacity>
           )}
         </View>
@@ -88,7 +101,7 @@ const MyOrders = () => {
     </View>
   );
 
-  const getStatusCount = (status) => orders.filter((order) => order.status === status).length;
+  const getStatusCount = (is_paid, is_delivered) => orders.filter((order) => order.is_paid === is_paid && order.is_delivered === is_delivered).length;
 
   if (!user) {
     return (
@@ -101,16 +114,18 @@ const MyOrders = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>My Orders</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>My Orders</Text>
+      </View>
       <View style={styles.statusContainer}>
         <TouchableOpacity onPress={() => toggleExpand('new')} style={styles.statusHeader}>
           <Text style={styles.statusLabel}>New Orders</Text>
-          <Text style={styles.statusCount}>{getStatusCount('new')}</Text>
+          <Text style={styles.statusCount}>{getStatusCount(0, 0)}</Text>
           <Ionicons name={expanded['new'] ? "caret-up" : "caret-down"} size={24} color="black" />
         </TouchableOpacity>
         {expanded['new'] && (
           <FlatList
-            data={orders.filter((order) => order.status === 'new')}
+            data={orders.filter((order) => order.is_paid === 0 && order.is_delivered === 0)}
             renderItem={renderOrderItem}
             keyExtractor={(item) => item.id.toString()}
           />
@@ -119,12 +134,12 @@ const MyOrders = () => {
       <View style={styles.statusContainer}>
         <TouchableOpacity onPress={() => toggleExpand('paid')} style={styles.statusHeader}>
           <Text style={styles.statusLabel}>Paid Orders</Text>
-          <Text style={styles.statusCount}>{getStatusCount('paid')}</Text>
+          <Text style={styles.statusCount}>{getStatusCount(1, 0)}</Text>
           <Ionicons name={expanded['paid'] ? "caret-up" : "caret-down"} size={24} color="black" />
         </TouchableOpacity>
         {expanded['paid'] && (
           <FlatList
-            data={orders.filter((order) => order.status === 'paid')}
+            data={orders.filter((order) => order.is_paid === 1 && order.is_delivered === 0)}
             renderItem={renderOrderItem}
             keyExtractor={(item) => item.id.toString()}
           />
@@ -133,12 +148,12 @@ const MyOrders = () => {
       <View style={styles.statusContainer}>
         <TouchableOpacity onPress={() => toggleExpand('delivered')} style={styles.statusHeader}>
           <Text style={styles.statusLabel}>Delivered Orders</Text>
-          <Text style={styles.statusCount}>{getStatusCount('delivered')}</Text>
+          <Text style={styles.statusCount}>{getStatusCount(1, 1)}</Text>
           <Ionicons name={expanded['delivered'] ? "caret-up" : "caret-down"} size={24} color="black" />
         </TouchableOpacity>
         {expanded['delivered'] && (
           <FlatList
-            data={orders.filter((order) => order.status === 'delivered')}
+            data={orders.filter((order) => order.is_paid === 1 && order.is_delivered === 1)}
             renderItem={renderOrderItem}
             keyExtractor={(item) => item.id.toString()}
           />
@@ -152,12 +167,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    paddingTop: 40, 
+  },
+  header: {
+    backgroundColor: '#3399ff',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderWidth: 2,
+    borderColor: 'black',
+    borderRadius: 10,
+    alignItems: 'center',
+    margin: 10,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginVertical: 20,
+    color: '#fff',
   },
   statusContainer: {
     marginVertical: 10,
@@ -214,25 +239,34 @@ const styles = StyleSheet.create({
     height: 50,
     marginRight: 10,
   },
+  productInfo: {
+    flex: 1,
+  },
   productTitle: {
     fontSize: 16,
-    flex: 1,
+  },
+  productPrice: {
+    fontSize: 16,
+    color: '#555',
   },
   productQuantity: {
     fontSize: 16,
   },
   statusButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#3399ff',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 5,
-    alignItems: 'center',
     marginTop: 10,
   },
   buttonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+    marginRight: 5,
   },
   errorText: {
     fontSize: 18,

@@ -4,6 +4,7 @@ const initialState = {
   cartItems: [],
   orders: [],
   user: null,
+  isLoggedIn: false,
 };
 
 function cartReducer(state = initialState, action) {
@@ -41,8 +42,12 @@ function cartReducer(state = initialState, action) {
       return { ...state, cartItems: action.payload };
     case 'SET_ORDERS':
       return { ...state, orders: action.payload };
-    case 'SET_USER':
-      return { ...state, user: action.payload };
+    case 'SET_USER': {
+      const isLoggedIn = !!action.payload;
+      return { ...state, user: action.payload, isLoggedIn };
+    }
+    case 'SET_LOGGED_IN':
+      return { ...state, isLoggedIn: action.payload };
     default:
       return state;
   }

@@ -99,11 +99,41 @@ const CartScreen = () => {
     try {
       const user = await AsyncStorage.getItem('user');
       const userId = user ? JSON.parse(user).id : null;
-      await AsyncStorage.removeItem(`cart-${userId}`);
-      dispatch({ type: 'SET_CART_ITEMS', payload: [] });
-      Alert.alert('Order Created', 'Your order has been successfully created.');
+      
+      // Create new order
+      const response = await fetch('http://localhost:3000/orders/neworder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ items: cartItems }),
+      });
+  
+      const data = await response.json();
+  
+      if (data.status === 'OK') {
+        await AsyncStorage.removeItem(`cart-${userId}`);
+        dispatch({ type: 'SET_CART_ITEMS', payload: [] });
+  
+        // Fetch updated orders
+        const ordersResponse = await fetch('http://localhost:3000/orders/all', {
+          headers: {
+            'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`,
+          },
+        });
+        const ordersData = await ordersResponse.json();
+        if (ordersData.status === 'OK') {
+          dispatch({ type: 'SET_ORDERS', payload: ordersData.orders });
+        }
+  
+        Alert.alert('Order Created', 'Your order has been successfully created.');
+      } else {
+        Alert.alert('Order Creation Failed', 'Failed to create order.');
+      }
     } catch (e) {
-      console.error('Failed to clear cart:', e);
+      console.error('Failed to create order:', e);
+      Alert.alert('Order Creation Failed', e.message);
     }
   };
 
@@ -159,6 +189,7 @@ const CartScreen = () => {
             onPress={handleCheckout}
           >
             <Text style={styles.checkoutButtonText}>Check Out</Text>
+            <Ionicons name="wallet" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
       )}
@@ -270,6 +301,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   checkoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#3399ff',
     paddingVertical: 10,
     paddingHorizontal: 20,
@@ -277,12 +310,13 @@ const styles = StyleSheet.create({
     borderColor: 'black',
     borderRadius: 10,
     width: '95%',
-    alignItems: 'center',
+    justifyContent: 'center',
   },
   checkoutButtonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+    marginRight: 5,
   }
 });
 

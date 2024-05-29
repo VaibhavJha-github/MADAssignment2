@@ -21,7 +21,7 @@ const SignIn = ({ navigation }) => {
       },
       body: JSON.stringify({ email, password }),
     })
-      .then(response => response.text())  // Change to text
+      .then(response => response.text())  
       .then(async text => {
         let data;
         try {
@@ -52,6 +52,19 @@ const SignIn = ({ navigation }) => {
               quantity: item.count,
             }));
             dispatch({ type: 'SET_CART_ITEMS', payload: cartItems });
+          }
+
+          // Fetch the orders from the server
+          const ordersResponse = await fetch('http://localhost:3000/orders/all', {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${data.token}`,
+            },
+          });
+          const ordersData = await ordersResponse.json();
+          if (ordersData.status === 'OK') {
+            dispatch({ type: 'SET_ORDERS', payload: ordersData.orders });
           }
 
           navigation.navigate('UserProfile');
