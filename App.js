@@ -195,13 +195,23 @@ const CustomTabBar = ({ state, descriptors, navigation, isLoggedIn }) => {
           }
         };
 
+        const IconWithBadge = () => {
+          if (route.name === 'My Cart') {
+            return <CartIconWithBadge />;
+          } else if (route.name === 'My Orders') {
+            return <OrdersIconWithBadge />;
+          } else {
+            return <Ionicons name={iconName} size={25} color={isFocused ? '#3399ff' : 'gray'} />;
+          }
+        };
+
         return (
           <TouchableOpacity
             key={index}
             onPress={onPress}
             style={styles.tabButton}
           >
-            <Ionicons name={iconName} size={25} color={isFocused ? '#3399ff' : 'gray'} />
+            <IconWithBadge />
             <Text style={{ color: isFocused ? '#3399ff' : 'gray', fontSize: 12 }}>{label}</Text>
           </TouchableOpacity>
         );
@@ -241,7 +251,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     height: 60,
-    paddingBottom: 10, 
+    paddingBottom: 10,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#ddd',

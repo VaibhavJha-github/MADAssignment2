@@ -26,6 +26,7 @@ const MyOrders = () => {
       const data = await response.json();
       if (data.status === 'OK') {
         dispatch({ type: 'SET_ORDERS', payload: data.orders });
+        await AsyncStorage.setItem('orders', JSON.stringify(data.orders));
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
